@@ -7,6 +7,7 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
 const evaluationRoutes = require('./routes/evaluations');
+const adminRoutes = require('./routes/adminRoutes');
 // Models
 const Teacher = require('./models/Teacher');
 const Student = require('./models/Student');
@@ -27,6 +28,7 @@ app.use(session({
   saveUninitialized: false,
 }));
 
+app.use('/admin', adminRoutes);
 // DB Connection
 mongoose.connect('mongodb+srv://steven:1234@cluster0.4s9eaq9.mongodb.net/teacher_eval?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
@@ -160,6 +162,17 @@ app.post('/web-login', async (req, res) => {
 
 
 
+app.delete('/teachers/:id', async (req, res) => {
+  try {
+    const teacher = await Teacher.findByIdAndDelete(req.params.id);
+    if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
+    res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 app.post('/change-password', async (req, res) => {
   const { studentId, newPassword } = req.body;
   try {
@@ -266,13 +279,19 @@ app.get('/students', async (req, res) => {
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
       .sort({ name: 1 });
+
     const total = await Student.countDocuments(query);
 
-    res.json({ students, totalPages: Math.ceil(total / limit) });
+    res.json({
+      students,
+      totalPages: Math.ceil(total / limit),
+      total, // ✅ This was missing
+    });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 app.put('/students/:id', async (req, res) => {
   try {
@@ -351,6 +370,10 @@ app.post('/upload-teachers', upload.single('file'), async (req, res) => {
     res.status(500).json({ message: 'Server error during teachers upload' });
   }
 });
+
+
+
+
 
 app.put('/teachers/:id', async (req, res) => {
   try {
